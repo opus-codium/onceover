@@ -1,0 +1,4 @@
+forge "http://forge.puppetlabs.com"
+#
+# I want to download some modules to check if r10k feature in Onceover works correctly.
+#
