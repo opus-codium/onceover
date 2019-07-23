@@ -1,10 +1,10 @@
 require 'r10k/puppetfile'
 require 'erb'
-require 'json'
 require 'yaml'
 require 'find'
 require 'pathname'
 require 'thread'
+require 'multi_json'
 require 'onceover/beaker'
 require 'onceover/logger'
 include Onceover::Logger
@@ -104,7 +104,7 @@ class Onceover
 
       @onceover_yaml = ENV['ONCEOVER_YAML'] || opts[:onceover_yaml] || File.expand_path("#{@root}/spec/onceover.yaml")
 
-      if File.exists?(@onceover_yaml) && _data = YAML.load_file(@onceover_yaml)
+      if File.exist?(@onceover_yaml) && _data = YAML.load_file(@onceover_yaml)
         opts.merge!(_data.fetch('opts',{})||{})
       end
       opts.fetch(:facts_dir,'').sub!(%r{^[^/.].+} ){|path| File.expand_path(path, @root)}
@@ -475,7 +475,7 @@ class Onceover
 
       # Add .onceover to Gitignore
       gitignore_path = File.expand_path('.gitignore', repo.root)
-      if File.exists? gitignore_path
+      if File.exist? gitignore_path
         gitignore_content = (File.open(gitignore_path, 'r') {|f| f.read }).split("\n")
         message = "#{'changed'.green}"
       else
@@ -499,8 +499,8 @@ class Onceover
       warn "[DEPRECATION] #{__method__} is deprecated due to the removal of Beaker"
 
       require 'onceover/beaker'
+      require 'multi_json'
       require 'net/http'
-      require 'json'
 
       hosts_hash = {}
 
@@ -522,7 +522,7 @@ class Onceover
           comment_out = true
         else
           comment_out = false
-          box_info = JSON.parse(response.body)
+          box_info = MultiJson.load(response.body)
           box_info['current_version']['providers'].each do |provider|
             if provider['name'] == 'virtualbox'
               url = provider['original_url']
@@ -567,7 +567,7 @@ class Onceover
 
     def self.init_write_file(contents, out_file)
       create_dirs_and_log(File.dirname(out_file))
-      if File.exists?(out_file)
+      if File.exist?(out_file)
         puts "#{'skipped'.yellow} #{Pathname.new(out_file).relative_path_from(Pathname.new(Dir.pwd)).to_s} #{'(exists)'.yellow}"
       else
         File.open(out_file,'w') {|f| f.write(contents)}
@@ -596,8 +596,8 @@ class Onceover
     def read_facts(facts_file)
       file = File.read(facts_file)
       begin
-        result = JSON.parse(file)
-      rescue JSON::ParserError
+        result = MultiJson.load(file)
+      rescue MultiJson::ParseError
         raise "Could not parse the file #{facts_file}, check that it is valid JSON and that the encoding is correct"
       end
       result
